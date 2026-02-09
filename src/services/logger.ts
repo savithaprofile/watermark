@@ -61,16 +61,21 @@ export function logEvent(
 export async function sendLogs() {
   if (eventBatch.length === 0) return;
 
-  try {
-    await fetch(LOG_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(eventBatch)
-    });
+ try {
+  const res = await fetch(LOG_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(eventBatch)
+  });
 
-    eventBatch = [];
-    // No localStorage cleanup required for "examLogs" because we don't persist it.
-  } catch (error) {
-    console.warn("Offline — logs saved locally");
+  if (!res.ok) {
+    console.info("[EventLogger] Backend unavailable — keeping logs locally.");
+    return;
   }
+
+  eventBatch = [];
+  localStorage.removeItem("examLogs");
+} catch {
+  console.info("[EventLogger] Offline — logs saved locally.");
+}
 }
