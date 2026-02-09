@@ -143,6 +143,12 @@ I aimed for pragmatic, interview-friendly implementations. Below are practical l
    - On submission, `EventLogger.submit()` marks logs immutable and forces a flush.
 
 ## How to verify (interviewer checklist)
+
+> Quick tip: Open the browser DevTools / Inspect panel with the following shortcuts:
+
+- macOS: Command (⌘) + Option (⌥) + I
+- Windows/Linux: Ctrl + Shift + I (or press F12)
+
 - Watermark rendering
   - Start the app and click Start Assessment. Confirm watermark text shows across the page, with candidate name/email and a live timestamp.
   - Resize the browser window — watermark re-renders and remains tiled.
