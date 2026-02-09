@@ -14,7 +14,11 @@ import {
     LinearProgress,
     Stack,
     Paper,
-    TextField
+    TextField,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from '@mui/material';
 import { EventLogger } from '../services/EventLogger';
 
@@ -55,6 +59,8 @@ const Assessment: React.FC = () => {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [showLogsDialog, setShowLogsDialog] = useState(false);
+    const [devLogs, setDevLogs] = useState<any>(null);
 
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
@@ -173,10 +179,7 @@ const Assessment: React.FC = () => {
             console.warn('Network error. Answers are saved locally.');
         }
 
-        // UI feedback
-        setTimeout(() => {
-            alert('Assessment Submitted! Answers sent to backend (check console).');
-        }, 500);
+        EventLogger.log('ASSESSMENT_SUBMIT', { method: 'USER_INITIATED' });
     };
 
     const handleFullscreen = () => {
@@ -196,6 +199,69 @@ const Assessment: React.FC = () => {
                     <Typography variant="caption" display="block" sx={{ mt: 2, color: 'text.secondary' }}>
                         Your session has been logged securely.
                     </Typography>
+                    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                        <Button
+                            variant="outlined"
+                            onClick={() => {
+                                const logs = EventLogger.getLogs();
+                                // include the answers the candidate provided for development review
+                                setDevLogs({ logs, answers });
+                                setShowLogsDialog(true);
+                            }}
+                        >
+                            View Logs (Dev)
+                        </Button>
+                    </Box>
+
+                    <Dialog open={showLogsDialog} onClose={() => setShowLogsDialog(false)} maxWidth="md" fullWidth>
+                        <DialogTitle>Assessment Logs (Development)</DialogTitle>
+                        <DialogContent dividers sx={{ maxHeight: '60vh', overflow: 'auto' }}>
+                            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Segoe UI Mono", "Noto Mono", monospace' }}>
+                                {JSON.stringify(devLogs, null, 2)}
+                            </pre>
+                        </DialogContent>
+                        <DialogActions>
+                            <Button onClick={() => {
+                                const payload = JSON.stringify(devLogs, null, 2);
+                                navigator.clipboard?.writeText(payload);
+                            }}>Copy JSON</Button>
+                            <Button onClick={() => {
+                                try {
+                                    const payload = JSON.stringify(devLogs, null, 2);
+                                    const blob = new Blob([payload], { type: 'application/json' });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = 'assessment-logs.json';
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    a.remove();
+                                    URL.revokeObjectURL(url);
+                                } catch (e) {
+                                    console.error('Download failed', e);
+                                }
+                            }}>Download JSON</Button>
+                            <Button color="warning" onClick={() => {
+                                // Clear centralized logs and persisted storage
+                                try {
+                                    EventLogger.clearLogs();
+                                } catch (e) {
+                                    console.error('Failed to clear EventLogger', e);
+                                }
+
+                                // Reset local assessment state so dev can start again
+                                setDevLogs(null);
+                                setIsSubmitted(false);
+                                setAnswers({});
+                                setTimeLeft(300);
+                                setCurrentQuestionIndex(0);
+                                setHasStarted(false);
+
+                                setShowLogsDialog(false);
+                            }}>Clear & Restart</Button>
+                            
+                        </DialogActions>
+                    </Dialog>
                 </Paper>
             </Container>
         );
